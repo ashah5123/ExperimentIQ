@@ -1,0 +1,18 @@
+# ExperimentIQ - Statistical Experimentation Framework
+# Install with: pip install -r requirements.txt
+
+# Web / API
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Data & statistics
+numpy>=1.24.0
+scipy>=1.11.0
+pandas>=2.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
