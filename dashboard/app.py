@@ -60,13 +60,13 @@ def plot_control_vs_treatment(control_series: pd.Series, treatment_series: pd.Se
         color_discrete_map={"Control": "#1f77b4", "Treatment": "#ff7f0e"},
     )
     fig.update_layout(bargap=0.1, legend_title="", xaxis_title="Value")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     fig2 = go.Figure()
     fig2.add_trace(go.Box(y=control_series.dropna(), name="Control", marker_color="#1f77b4"))
     fig2.add_trace(go.Box(y=treatment_series.dropna(), name="Treatment", marker_color="#ff7f0e"))
     fig2.update_layout(title="Control vs Treatment (box plot)", yaxis_title="Value", showlegend=True)
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
 
 
 def render_results_card(
@@ -115,17 +115,36 @@ def render_results_card(
 def run_ttest():
     from core.stats import two_sample_ttest
 
-    c_col = st.selectbox("Control column", cols, key="ttest_c")
-    t_col = st.selectbox("Treatment column", [x for x in cols if x != c_col], key="ttest_t")
+    group_col = st.selectbox("Group column", cols, key="ttest_group")
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    if not numeric_cols:
+        st.error("No numeric columns available for the metric. Please upload data with at least one numeric column.")
+        return
+    metric_col = st.selectbox("Metric column", numeric_cols, key="ttest_metric")
     alpha = st.slider("Alpha", 0.01, 0.2, 0.05, 0.01, key="ttest_alpha")
     equal_var = st.checkbox("Assume equal variance", True, key="ttest_var")
 
-    control = df[c_col].dropna()
-    treatment = df[t_col].dropna()
-    plot_control_vs_treatment(control, treatment)
+    if not pd.api.types.is_numeric_dtype(df[metric_col]):
+        st.error("Selected metric column must be numeric.")
+        return
+
+    unique_groups = df[group_col].unique()
+    if len(unique_groups) != 2:
+        st.error("Group column must have exactly two unique values.")
+        return
+
+    control = df[df[group_col] == unique_groups[0]][metric_col].dropna().tolist()
+    treatment = df[df[group_col] == unique_groups[1]][metric_col].dropna().tolist()
+
+    if not control or not treatment:
+        st.error("Both groups must have at least one non-missing value in the metric column.")
+        return
+
+    st.caption(f"Control: '{unique_groups[0]}' | Treatment: '{unique_groups[1]}'")
+    plot_control_vs_treatment(pd.Series(control), pd.Series(treatment))
 
     if st.button("Run T-Test", key="btn_ttest"):
-        result = two_sample_ttest(control.tolist(), treatment.tolist(), alpha=alpha, equal_var=equal_var)
+        result = two_sample_ttest(control, treatment, alpha=alpha, equal_var=equal_var)
         render_results_card(
             effect_size=result.effect_size,
             p_value=result.p_value,
@@ -241,7 +260,7 @@ def run_causal():
     plot_df = pd.DataFrame({"outcome": Y.ravel(), "treatment": ["Treatment" if t == 1 else "Control" for t in T.ravel()]})
     fig = px.histogram(plot_df, x="outcome", color="treatment", barmode="overlay", opacity=0.6, nbins=30,
                       title="Outcome distribution by treatment", color_discrete_map={"Control": "#1f77b4", "Treatment": "#ff7f0e"})
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     if st.button("Run Causal Forest ATE", key="btn_causal"):
         with st.spinner("Fitting causal forest…"):
@@ -277,7 +296,7 @@ def run_synthetic():
 
     # Chart: outcome over time by unit
     fig = px.line(sdf, x="time", y="outcome", color="unit", title="Outcome over time by unit")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     if st.button("Run Synthetic Control", key="btn_syn"):
         try:
