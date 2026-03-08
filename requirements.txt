@@ -4,11 +4,17 @@
 # Web / API
 flask>=3.0.0
 flask-cors>=4.0.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
 
 # Data & statistics
 numpy>=1.24.0
 scipy>=1.11.0
 pandas>=2.0.0
+plotly>=5.18.0
+
+# Dashboard
+streamlit>=1.29.0
 
 # Environment
 python-dotenv>=1.0.0
